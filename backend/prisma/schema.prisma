@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 카테고리 모델 (IT/TECH, AI, Marketing, Design)
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  color       String    @default("#3B82F6") // 카테고리별 색상
+  icon        String?   // 아이콘 이름
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  articles    Article[]
+  podcasts    Podcast[]
+
+  @@map("categories")
+}
+
+// 아티클 모델
+model Article {
+  id           Int      @id @default(autoincrement())
+  title        String
+  slug         String   @unique
+  excerpt      String?
+  content      String   @db.Text
+  originalUrl  String?  // TLDR 원본 URL
+  imageUrl     String?
+  featured     Boolean  @default(false)
+  published    Boolean  @default(false)
+  publishedAt  DateTime?
+  readTime     Int?     // 읽기 시간(분)
+  viewCount    Int      @default(0)
+  
+  // AI 생성 메타데이터
+  aiGenerated    Boolean @default(true)
+  aiSummary      String? @db.Text
+  aiKeywords     String[]
+  aiSentiment    String? // positive, negative, neutral
+  aiImportance   Float?  // 0.0 - 1.0
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  categoryId   Int
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@map("articles")
+}
+
+// 팟캐스트 모델
+model Podcast {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?  @db.Text
+  audioUrl    String   // 오디오 파일 URL
+  duration    String   // "15:32" 형태
+  listens     Int      @default(0)
+  publishedAt DateTime
+  
+  // AI TTS 메타데이터
+  ttsProvider String?  // elevenlabs, openai 등
+  voiceId     String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@map("podcasts")
+}
+
+// 구독 모델
+model Subscription {
+  id                        Int       @id @default(autoincrement())
+  email                     String    @unique
+  categories                String[]  // 구독한 카테고리 slug들
+  preferences               Json      @default("{}")  // 추가 설정
+  isActive                  Boolean   @default(true)
+  isVerified                Boolean   @default(false)
+  
+  // 인증 관련
+  verificationToken         String?   @unique
+  verificationTokenExpires  DateTime?
+  unsubscribeToken          String?   @unique
+  
+  subscribedAt              DateTime  @default(now())
+  verifiedAt                DateTime?
+  updatedAt                 DateTime  @updatedAt
+
+  // Relations
+  newsletterSends           NewsletterSend[]
+  
+  @@map("subscriptions")
+}
+
+// 뉴스레터 발송 기록
+model NewsletterSend {
+  id            Int      @id @default(autoincrement())
+  subject       String
+  content       String   @db.Text
+  category      String?  // 특정 카테고리용 뉴스레터
+  sentAt        DateTime @default(now())
+  status        String   @default("sent") // sent, failed, pending
+  
+  // Relations
+  subscriptionId Int
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  @@map("newsletter_sends")
+}
+
+// 이메일 수집 로그
+model EmailCollectionLog {
+  id              Int      @id @default(autoincrement())
+  emailMessageId  String   @unique // Gmail message ID
+  fromEmail       String
+  subject         String
+  receivedAt      DateTime
+  processed       Boolean  @default(false)
+  processingError String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@map("email_collection_logs")
+}
+
+// 시스템 설정
+model SystemSetting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_settings")
+}
+
+// 작업 큐 (스케줄링)
+model JobQueue {
+  id          Int      @id @default(autoincrement())
+  type        String   // email_collection, content_processing, newsletter_send, podcast_generation
+  payload     Json
+  status      String   @default("pending") // pending, processing, completed, failed
+  priority    Int      @default(0)
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?
+  
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("job_queue")
+}

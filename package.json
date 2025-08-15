@@ -1,0 +1,21 @@
+{
+  "name": "aid-news",
+  "version": "1.0.0",
+  "description": "Ai.D NEWS - Automated News Curation Platform",
+  "scripts": {
+    "dev": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop ecosystem.config.js",
+    "restart": "pm2 restart ecosystem.config.js",
+    "logs": "pm2 logs --nostream",
+    "status": "pm2 status",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:dev": "cd backend && npm run dev",
+    "setup": "cd frontend && npm install && cd ../backend && npm install"
+  },
+  "keywords": ["news", "curation", "ai", "newsletter"],
+  "author": "Ai.D NEWS Team",
+  "license": "MIT",
+  "devDependencies": {
+    "pm2": "^5.3.0"
+  }
+}
