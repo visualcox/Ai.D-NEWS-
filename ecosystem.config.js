@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'aid-news-frontend',
       cwd: './frontend',
-      script: 'npx',
-      args: 'next dev',
+      script: 'npm',
+      args: 'run dev',
       env: {
         NODE_ENV: 'development',
         PORT: 3000,
