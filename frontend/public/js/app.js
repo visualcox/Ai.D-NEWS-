@@ -122,6 +122,8 @@ async function handleNewsletterSubmit(e) {
     const categories = Array.from(e.target.querySelectorAll('input[name="categories"]:checked'))
         .map(cb => cb.value);
     
+    console.log('Form submission:', { email, categories }); // Debug log
+    
     if (!email) {
         alert('이메일 주소를 입력해주세요.');
         return;
@@ -138,23 +140,37 @@ async function handleNewsletterSubmit(e) {
         submitBtn.textContent = '구독 중...';
         submitBtn.disabled = true;
         
+        console.log('Making API request to:', `${API_BASE_URL}/subscriptions`); // Debug log
+        
+        const requestBody = {
+            email,
+            categories,
+            preferences: {
+                frequency: 'weekly',
+                format: 'html',
+                language: 'ko'
+            }
+        };
+        
+        console.log('Request body:', requestBody); // Debug log
+        
         const response = await fetch(`${API_BASE_URL}/subscriptions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                email,
-                categories,
-                preferences: {
-                    frequency: 'weekly',
-                    format: 'html',
-                    language: 'ko'
-                }
-            })
+            body: JSON.stringify(requestBody)
         });
         
+        console.log('Response status:', response.status); // Debug log
+        console.log('Response headers:', response.headers); // Debug log
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Response data:', data); // Debug log
         
         if (data.success) {
             alert('구독이 완료되었습니다! 확인 이메일을 확인해주세요.');
@@ -165,7 +181,20 @@ async function handleNewsletterSubmit(e) {
         
     } catch (error) {
         console.error('Newsletter subscription error:', error);
-        alert(error.message || '구독 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        let errorMessage = '구독 처리 중 오류가 발생했습니다.';
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+        } else if (error.message.includes('HTTP error')) {
+            errorMessage = `서버 오류가 발생했습니다. (${error.message})`;
+        }
+        
+        alert(errorMessage);
     } finally {
         const submitBtn = e.target.querySelector('button[type="submit"]');
         submitBtn.textContent = '무료 구독하기';
