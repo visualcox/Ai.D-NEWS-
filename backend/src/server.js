@@ -59,6 +59,86 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 // Request logging
 app.use(requestLogger)
 
+// Root endpoint - API information
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Ai.D NEWS API Server',
+    version: '1.0.0',
+    description: 'Automated news curation API for IT/TECH, AI, Marketing, and Design content',
+    status: 'Online',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    endpoints: {
+      health: '/health',
+      articles: '/api/articles',
+      categories: '/api/categories', 
+      subscriptions: '/api/subscriptions',
+      podcasts: '/api/podcasts',
+      email: '/api/email'
+    },
+    documentation: '/api/docs'
+  })
+})
+
+// API documentation endpoint
+app.get('/api/docs', (req, res) => {
+  res.status(200).json({
+    title: 'Ai.D NEWS API Documentation',
+    version: '1.0.0',
+    baseUrl: req.protocol + '://' + req.get('host'),
+    endpoints: [
+      {
+        path: '/health',
+        method: 'GET',
+        description: 'Health check endpoint',
+        response: { status: 'OK', timestamp: 'ISO string', environment: 'string' }
+      },
+      {
+        path: '/api/articles',
+        method: 'GET',
+        description: 'Get all published articles',
+        queryParams: { page: 'number', limit: 'number', category: 'string' },
+        response: { success: 'boolean', data: { articles: 'array', pagination: 'object' } }
+      },
+      {
+        path: '/api/articles/featured',
+        method: 'GET', 
+        description: 'Get featured articles',
+        response: { success: 'boolean', data: { articles: 'array' } }
+      },
+      {
+        path: '/api/categories',
+        method: 'GET',
+        description: 'Get all content categories',
+        response: { success: 'boolean', data: { categories: 'array' } }
+      },
+      {
+        path: '/api/subscriptions',
+        method: 'POST',
+        description: 'Create newsletter subscription',
+        body: { email: 'string', categories: 'array' },
+        response: { success: 'boolean', message: 'string', data: 'object' }
+      },
+      {
+        path: '/api/podcasts',
+        method: 'GET',
+        description: 'Get podcast episodes',
+        queryParams: { category: 'string', limit: 'number' },
+        response: { success: 'boolean', data: { episodes: 'array' } }
+      }
+    ],
+    categories: ['tech', 'ai', 'marketing', 'design'],
+    features: [
+      'Automated email collection from TLDR Newsletter',
+      'Content categorization using AI',
+      'Weekly newsletter generation',
+      'Podcast creation and streaming',
+      'Multi-category subscriptions',
+      'Scheduled content updates every Saturday 10:00 AM KST'
+    ]
+  })
+})
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ 
