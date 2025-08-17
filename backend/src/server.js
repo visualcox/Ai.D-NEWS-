@@ -11,6 +11,7 @@ import categoriesRouter from './routes/categories.js'
 import subscriptionsRouter from './routes/subscriptions.js'
 import podcastsRouter from './routes/podcasts.js'
 import emailRouter from './routes/email.js'
+import emailCollectionRouter from './routes/emailCollection.js'
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
@@ -74,7 +75,8 @@ app.get('/', (req, res) => {
       categories: '/api/categories', 
       subscriptions: '/api/subscriptions',
       podcasts: '/api/podcasts',
-      email: '/api/email'
+      email: '/api/email',
+      emailCollection: '/api/email-collection'
     },
     documentation: '/api/docs'
   })
@@ -125,6 +127,32 @@ app.get('/api/docs', (req, res) => {
         description: 'Get podcast episodes',
         queryParams: { category: 'string', limit: 'number' },
         response: { success: 'boolean', data: { episodes: 'array' } }
+      },
+      {
+        path: '/api/email-collection/collect',
+        method: 'POST',
+        description: 'Collect TLDR emails and update site content',
+        body: { maxResults: 'number (optional, default: 50)' },
+        response: { success: 'boolean', message: 'string', data: 'object' }
+      },
+      {
+        path: '/api/email-collection/articles',
+        method: 'GET',
+        description: 'Get collected articles from TLDR emails',
+        queryParams: { category: 'string', featured: 'boolean', page: 'number', limit: 'number' },
+        response: { success: 'boolean', data: { articles: 'array', pagination: 'object' } }
+      },
+      {
+        path: '/api/email-collection/status',
+        method: 'GET',
+        description: 'Get email collection status and statistics',
+        response: { success: 'boolean', data: 'object' }
+      },
+      {
+        path: '/api/email-collection/initialize',
+        method: 'POST',
+        description: 'Initialize email collector service',
+        response: { success: 'boolean', data: { initialized: 'boolean' } }
       }
     ],
     categories: ['tech', 'ai', 'marketing', 'design'],
@@ -154,6 +182,7 @@ app.use('/api/categories', categoriesRouter)
 app.use('/api/subscriptions', subscriptionsRouter)
 app.use('/api/podcasts', podcastsRouter)
 app.use('/api/email', emailRouter)
+app.use('/api/email-collection', emailCollectionRouter)
 
 // 404 handler
 app.use('*', (req, res) => {

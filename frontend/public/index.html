@@ -203,6 +203,61 @@
         </div>
     </section>
 
+    <!-- Admin Panel -->
+    <section class="admin-panel" id="admin-panel" style="display: none;">
+        <div class="container">
+            <div class="admin-header">
+                <h2>관리자 패널</h2>
+                <p>TLDR Newsletter 이메일 수집 및 콘텐츠 관리</p>
+            </div>
+            
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <h3>📧 이메일 수집</h3>
+                    <p>dan@tldrnewsletter.com의 모든 이메일을 수집하여 사이트를 업데이트합니다.</p>
+                    <div class="admin-actions">
+                        <button id="collectEmailsBtn" class="btn btn-primary">이메일 수집 시작</button>
+                        <button id="checkStatusBtn" class="btn btn-secondary">상태 확인</button>
+                    </div>
+                    <div id="collectionStatus" class="status-info"></div>
+                </div>
+                
+                <div class="admin-card">
+                    <h3>📊 수집 통계</h3>
+                    <div id="collectionStats" class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="totalArticles">0</span>
+                            <span class="stat-label">총 기사 수</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="lastUpdate">-</span>
+                            <span class="stat-label">마지막 업데이트</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-card">
+                    <h3>🗂️ 카테고리별 분포</h3>
+                    <div id="categoryStats" class="category-stats">
+                        <!-- 동적으로 생성됨 -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="collected-articles">
+                <h3>최근 수집된 기사</h3>
+                <div id="collectedArticlesList" class="articles-grid">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Admin Toggle Button -->
+    <button id="adminToggle" class="admin-toggle" title="관리자 패널 열기">
+        ⚙️
+    </button>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">

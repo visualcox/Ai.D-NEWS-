@@ -1,4 +1,5 @@
 import logger from '../utils/logger.js'
+import emailCollector from '../services/emailCollector.js'
 
 // Mock data for demonstration
 const mockArticles = [
@@ -55,23 +56,40 @@ export const getArticles = async (req, res, next) => {
       limit = 10, 
       category, 
       sortBy = 'publishedAt', 
-      sortOrder = 'desc' 
+      sortOrder = 'desc',
+      includeCollected = 'true'
     } = req.query
 
-    const offset = (page - 1) * limit
+    // Get collected articles from email collector
+    let allArticles = [...mockArticles]
     
-    const whereClause = {
-      published: true,
-      ...(category && { category: { slug: category } })
+    if (includeCollected === 'true') {
+      try {
+        const collectedResult = emailCollector.getCollectedArticles({ 
+          category: category ? category.toLowerCase() : undefined 
+        })
+        
+        // Add unique IDs to collected articles and merge
+        const collectedArticles = collectedResult.articles.map((article, index) => ({
+          ...article,
+          id: 1000 + index, // Use higher IDs for collected articles
+          source: 'TLDR Newsletter'
+        }))
+        
+        allArticles = [...allArticles, ...collectedArticles]
+        logger.info(`Merged ${collectedArticles.length} collected articles with ${mockArticles.length} mock articles`)
+      } catch (error) {
+        logger.warn('Failed to get collected articles, using mock data only:', error)
+      }
     }
-
-    let filteredArticles = [...mockArticles]
     
+    // Filter by category if specified
+    let filteredArticles = allArticles
     if (category) {
-      filteredArticles = filteredArticles.filter(a => a.category.slug === category)
+      filteredArticles = allArticles.filter(a => a.category.slug === category.toLowerCase())
     }
 
-    // Simple sorting
+    // Sort articles
     filteredArticles.sort((a, b) => {
       if (sortBy === 'publishedAt') {
         return sortOrder === 'desc' 
@@ -81,6 +99,7 @@ export const getArticles = async (req, res, next) => {
       return 0
     })
 
+    // Apply pagination
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + parseInt(limit)
     const articles = filteredArticles.slice(startIndex, endIndex)

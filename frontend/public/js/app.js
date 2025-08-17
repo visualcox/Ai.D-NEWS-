@@ -269,6 +269,236 @@ function toggleMobileMenu() {
     console.log('Mobile menu toggle');
 }
 
+// Admin Panel Functionality
+class AdminPanel {
+    constructor() {
+        this.isVisible = false;
+        this.isCollecting = false;
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Admin toggle button
+        const adminToggle = document.getElementById('adminToggle');
+        if (adminToggle) {
+            adminToggle.addEventListener('click', () => this.togglePanel());
+        }
+
+        // Collect emails button
+        const collectBtn = document.getElementById('collectEmailsBtn');
+        if (collectBtn) {
+            collectBtn.addEventListener('click', () => this.collectEmails());
+        }
+
+        // Check status button
+        const statusBtn = document.getElementById('checkStatusBtn');
+        if (statusBtn) {
+            statusBtn.addEventListener('click', () => this.checkStatus());
+        }
+
+        // Initialize admin panel on load
+        this.initializeAdmin();
+    }
+
+    async initializeAdmin() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/email-collection/initialize`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Admin panel initialized:', data);
+                this.checkStatus();
+            }
+        } catch (error) {
+            console.error('Failed to initialize admin panel:', error);
+        }
+    }
+
+    togglePanel() {
+        const panel = document.getElementById('admin-panel');
+        if (panel) {
+            this.isVisible = !this.isVisible;
+            panel.style.display = this.isVisible ? 'block' : 'none';
+            
+            // Update toggle button
+            const toggle = document.getElementById('adminToggle');
+            if (toggle) {
+                toggle.textContent = this.isVisible ? '✖️' : '⚙️';
+                toggle.title = this.isVisible ? '관리자 패널 닫기' : '관리자 패널 열기';
+            }
+        }
+    }
+
+    async collectEmails() {
+        if (this.isCollecting) return;
+
+        this.isCollecting = true;
+        const btn = document.getElementById('collectEmailsBtn');
+        const statusDiv = document.getElementById('collectionStatus');
+        
+        if (btn) {
+            btn.innerHTML = '<span class="loading-spinner"></span>이메일 수집 중...';
+            btn.disabled = true;
+        }
+
+        if (statusDiv) {
+            statusDiv.innerHTML = '📧 TLDR Newsletter 이메일을 수집하고 있습니다...';
+            statusDiv.className = 'status-info processing';
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/email-collection/collect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ maxResults: 50 })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const { articleCount, emailCount, categories } = data.data;
+                
+                if (statusDiv) {
+                    statusDiv.innerHTML = `
+                        ✅ 수집 완료!<br>
+                        📧 처리된 이메일: ${emailCount}개<br>
+                        📰 추출된 기사: ${articleCount}개
+                    `;
+                    statusDiv.className = 'status-info success';
+                }
+
+                // Update statistics
+                this.updateStats(data.data);
+                
+                // Reload articles to show new content
+                await this.loadCollectedArticles();
+                
+                // Refresh main articles grid
+                loadFeaturedArticles();
+                
+            } else {
+                throw new Error(data.message || '수집 실패');
+            }
+
+        } catch (error) {
+            console.error('Email collection failed:', error);
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = `❌ 수집 실패: ${error.message}`;
+                statusDiv.className = 'status-info error';
+            }
+        } finally {
+            this.isCollecting = false;
+            
+            if (btn) {
+                btn.innerHTML = '이메일 수집 시작';
+                btn.disabled = false;
+            }
+        }
+    }
+
+    async checkStatus() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/email-collection/status`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.updateStats(data.data);
+                this.loadCollectedArticles();
+            }
+
+        } catch (error) {
+            console.error('Failed to check status:', error);
+        }
+    }
+
+    updateStats(data) {
+        // Update total articles count
+        const totalArticlesEl = document.getElementById('totalArticles');
+        if (totalArticlesEl) {
+            totalArticlesEl.textContent = data.articleCount || 0;
+        }
+
+        // Update last update time
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl && data.lastCollectionDate) {
+            const date = new Date(data.lastCollectionDate);
+            lastUpdateEl.textContent = date.toLocaleString('ko-KR');
+        }
+
+        // Update category stats
+        const categoryStatsEl = document.getElementById('categoryStats');
+        if (categoryStatsEl && data.categories) {
+            categoryStatsEl.innerHTML = '';
+            
+            Object.entries(data.categories).forEach(([categoryName, stats]) => {
+                const statEl = document.createElement('div');
+                statEl.className = 'category-stat';
+                statEl.innerHTML = `
+                    <span class="category-name">${categoryName}</span>
+                    <span class="category-count" style="background-color: ${stats.color}">${stats.count}</span>
+                `;
+                categoryStatsEl.appendChild(statEl);
+            });
+        }
+    }
+
+    async loadCollectedArticles() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/email-collection/articles?limit=6`);
+            const data = await response.json();
+
+            if (data.success) {
+                const articlesListEl = document.getElementById('collectedArticlesList');
+                if (articlesListEl) {
+                    articlesListEl.innerHTML = '';
+                    
+                    data.data.articles.forEach(article => {
+                        const articleEl = this.createCollectedArticleElement(article);
+                        articlesListEl.appendChild(articleEl);
+                    });
+                }
+            }
+
+        } catch (error) {
+            console.error('Failed to load collected articles:', error);
+        }
+    }
+
+    createCollectedArticleElement(article) {
+        const div = document.createElement('div');
+        div.className = 'collected-article-card';
+        
+        const date = new Date(article.publishedAt).toLocaleDateString('ko-KR');
+        
+        div.innerHTML = `
+            <div class="collected-article-meta">
+                <span class="collected-article-category" style="background-color: ${article.category.color}">
+                    ${article.category.name}
+                </span>
+                <span class="collected-article-date">${date}</span>
+            </div>
+            <h4 class="collected-article-title">${article.title}</h4>
+            <p class="collected-article-excerpt">${article.excerpt}</p>
+            <div class="collected-article-footer">
+                <span class="collected-article-source">${article.source || 'TLDR Newsletter'}</span>
+                <span>${article.readTime}분 읽기</span>
+            </div>
+        `;
+        
+        return div;
+    }
+}
+
+// Initialize admin panel when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    new AdminPanel();
+});
+
 // Export functions for global access
 window.loadFeaturedArticles = loadFeaturedArticles;
 window.toggleMobileMenu = toggleMobileMenu;

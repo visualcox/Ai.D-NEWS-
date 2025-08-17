@@ -8,7 +8,8 @@ export const articleQuerySchema = Joi.object({
   sortBy: Joi.string().valid('publishedAt', 'title', 'readTime', 'viewCount').default('publishedAt'),
   sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
   featured: Joi.boolean(),
-  published: Joi.boolean().default(true)
+  published: Joi.boolean().default(true),
+  includeCollected: Joi.string().valid('true', 'false').default('true')
 })
 
 // Subscription validation schemas
