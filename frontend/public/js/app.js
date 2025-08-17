@@ -348,7 +348,8 @@ class AdminPanel {
             if (authStatusDiv) {
                 authStatusDiv.innerHTML = `
                     ✅ Gmail 인증 창이 열렸습니다.<br>
-                    1. 새 창에서 Gmail 계정으로 로그인<br>
+                    <strong>중요: 9afood@gmail.com 계정으로 로그인하세요</strong><br>
+                    1. 새 창에서 <strong>9afood@gmail.com</strong>으로 로그인<br>
                     2. 이메일 읽기 권한 승인<br>
                     3. 인증 코드를 복사하여 아래에 입력
                 `;
@@ -407,8 +408,8 @@ class AdminPanel {
             if (data.success) {
                 if (authStatusDiv) {
                     authStatusDiv.innerHTML = `
-                        ✅ Gmail 계정 연동 성공!<br>
-                        이제 실제 TLDR Newsletter 이메일을 수집할 수 있습니다.
+                        ✅ 9afood@gmail.com 계정 연동 성공!<br>
+                        이제 해당 계정의 TLDR Newsletter 이메일을 수집할 수 있습니다.
                     `;
                     authStatusDiv.className = 'status-info success';
                 }

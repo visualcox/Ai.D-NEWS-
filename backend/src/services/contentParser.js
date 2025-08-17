@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio'
+import { load } from 'cheerio'
 import { convert } from 'html-to-text'
 import logger from '../utils/logger.js'
 
@@ -42,7 +42,7 @@ class ContentParser {
    */
   parseEmailContent(email) {
     try {
-      const $ = cheerio.load(email.body)
+      const $ = load(email.body)
       const articles = []
 
       // Remove script and style tags

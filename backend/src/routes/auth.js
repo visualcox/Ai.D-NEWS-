@@ -102,10 +102,11 @@ router.get('/gmail', async (req, res) => {
             </div>
             
             <div class="auth-card">
-                <h2>Gmail 계정 연동</h2>
+                <h2>9afood@gmail.com 연동</h2>
                 <p>
-                    TLDR Newsletter 이메일을 자동으로 수집하기 위해 
-                    Gmail 계정 접근 권한이 필요합니다.
+                    <strong>타겟 계정</strong>: 9afood@gmail.com<br>
+                    해당 Gmail 계정의 TLDR Newsletter 이메일을 자동으로 수집하기 위해 
+                    접근 권한이 필요합니다.
                 </p>
                 
                 <a href="${authUrl}" class="btn" target="_blank">
@@ -116,7 +117,7 @@ router.get('/gmail', async (req, res) => {
                     <strong>📋 연동 절차:</strong>
                     <ol class="steps">
                         <li>위 버튼을 클릭하여 Google 인증 페이지로 이동</li>
-                        <li>Gmail 계정으로 로그인</li>
+                        <li><strong>9afood@gmail.com 계정으로 로그인</strong></li>
                         <li>이메일 읽기 권한 승인</li>
                         <li>인증 코드를 복사하여 관리자 패널에 입력</li>
                     </ol>

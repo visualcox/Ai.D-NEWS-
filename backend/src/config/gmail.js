@@ -118,6 +118,15 @@ class GmailService {
       const profile = await this.gmail.users.getProfile({ userId: 'me' })
       
       logger.info(`✅ Gmail authentication successful for: ${profile.data.emailAddress}`)
+      
+      // Check if this is the expected account
+      const targetAccount = process.env.TARGET_GMAIL_ACCOUNT || '9afood@gmail.com'
+      if (profile.data.emailAddress === targetAccount) {
+        logger.info(`🎯 Perfect! Connected to target account: ${targetAccount}`)
+      } else {
+        logger.warn(`⚠️  Connected to ${profile.data.emailAddress}, but target is ${targetAccount}`)
+      }
+      
       logger.info('🔑 Tokens obtained:', {
         hasAccessToken: !!tokens.access_token,
         hasRefreshToken: !!tokens.refresh_token,
