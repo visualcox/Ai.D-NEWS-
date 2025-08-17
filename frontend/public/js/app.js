@@ -284,6 +284,22 @@ class AdminPanel {
             adminToggle.addEventListener('click', () => this.togglePanel());
         }
 
+        // Gmail auth buttons
+        const gmailAuthBtn = document.getElementById('gmailAuthBtn');
+        if (gmailAuthBtn) {
+            gmailAuthBtn.addEventListener('click', () => this.startGmailAuth());
+        }
+
+        const authStatusBtn = document.getElementById('authStatusBtn');
+        if (authStatusBtn) {
+            authStatusBtn.addEventListener('click', () => this.checkAuthStatus());
+        }
+
+        const submitAuthCodeBtn = document.getElementById('submitAuthCode');
+        if (submitAuthCodeBtn) {
+            submitAuthCodeBtn.addEventListener('click', () => this.submitAuthCode());
+        }
+
         // Collect emails button
         const collectBtn = document.getElementById('collectEmailsBtn');
         if (collectBtn) {
@@ -309,10 +325,159 @@ class AdminPanel {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Admin panel initialized:', data);
+                this.checkAuthStatus();
                 this.checkStatus();
             }
         } catch (error) {
             console.error('Failed to initialize admin panel:', error);
+        }
+    }
+
+    async startGmailAuth() {
+        try {
+            const authStatusDiv = document.getElementById('authStatus');
+            if (authStatusDiv) {
+                authStatusDiv.innerHTML = '🔄 Gmail 인증 URL을 생성하는 중...';
+                authStatusDiv.className = 'status-info processing';
+            }
+
+            // Open Gmail auth page in new window
+            const authWindow = window.open(`${API_BASE_URL}/auth/gmail`, 'gmailAuth', 
+                'width=600,height=700,scrollbars=yes,resizable=yes');
+
+            if (authStatusDiv) {
+                authStatusDiv.innerHTML = `
+                    ✅ Gmail 인증 창이 열렸습니다.<br>
+                    1. 새 창에서 Gmail 계정으로 로그인<br>
+                    2. 이메일 읽기 권한 승인<br>
+                    3. 인증 코드를 복사하여 아래에 입력
+                `;
+                authStatusDiv.className = 'status-info success';
+            }
+
+            // Show auth code input section
+            const authCodeSection = document.getElementById('authCodeSection');
+            if (authCodeSection) {
+                authCodeSection.style.display = 'block';
+            }
+
+        } catch (error) {
+            console.error('Gmail auth failed:', error);
+            const authStatusDiv = document.getElementById('authStatus');
+            if (authStatusDiv) {
+                authStatusDiv.innerHTML = `❌ Gmail 인증 시작 실패: ${error.message}`;
+                authStatusDiv.className = 'status-info error';
+            }
+        }
+    }
+
+    async submitAuthCode() {
+        const authCodeInput = document.getElementById('authCodeInput');
+        const authStatusDiv = document.getElementById('authStatus');
+        const submitBtn = document.getElementById('submitAuthCode');
+        
+        if (!authCodeInput || !authCodeInput.value.trim()) {
+            alert('인증 코드를 입력해주세요.');
+            return;
+        }
+
+        const authCode = authCodeInput.value.trim();
+        
+        try {
+            if (submitBtn) {
+                submitBtn.innerHTML = '<span class="loading-spinner"></span>처리 중...';
+                submitBtn.disabled = true;
+            }
+
+            if (authStatusDiv) {
+                authStatusDiv.innerHTML = '🔄 Gmail 인증을 처리하는 중...';
+                authStatusDiv.className = 'status-info processing';
+            }
+
+            const response = await fetch(`${API_BASE_URL}/auth/gmail/callback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: authCode })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                if (authStatusDiv) {
+                    authStatusDiv.innerHTML = `
+                        ✅ Gmail 계정 연동 성공!<br>
+                        이제 실제 TLDR Newsletter 이메일을 수집할 수 있습니다.
+                    `;
+                    authStatusDiv.className = 'status-info success';
+                }
+
+                // Hide auth code section
+                const authCodeSection = document.getElementById('authCodeSection');
+                if (authCodeSection) {
+                    authCodeSection.style.display = 'none';
+                }
+
+                // Clear input
+                authCodeInput.value = '';
+
+                // Update auth status
+                this.checkAuthStatus();
+
+            } else {
+                throw new Error(data.message || '인증 실패');
+            }
+
+        } catch (error) {
+            console.error('Auth code submission failed:', error);
+            
+            if (authStatusDiv) {
+                authStatusDiv.innerHTML = `❌ 인증 실패: ${error.message}`;
+                authStatusDiv.className = 'status-info error';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.innerHTML = '인증 코드 제출';
+                submitBtn.disabled = false;
+            }
+        }
+    }
+
+    async checkAuthStatus() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/gmail/status`);
+            const data = await response.json();
+
+            const authStatusDiv = document.getElementById('authStatus');
+            const gmailAuthBtn = document.getElementById('gmailAuthBtn');
+
+            if (data.success && data.data.isAuthenticated) {
+                if (authStatusDiv) {
+                    authStatusDiv.innerHTML = '✅ Gmail 계정이 연동되었습니다. 실제 이메일 수집이 가능합니다.';
+                    authStatusDiv.className = 'status-info success';
+                }
+                if (gmailAuthBtn) {
+                    gmailAuthBtn.textContent = '✅ 연동 완료';
+                    gmailAuthBtn.disabled = true;
+                }
+            } else if (data.success && data.data.hasCredentials) {
+                if (authStatusDiv) {
+                    authStatusDiv.innerHTML = '⚠️ Gmail API가 설정되었지만 사용자 인증이 필요합니다.';
+                    authStatusDiv.className = 'status-info processing';
+                }
+            } else {
+                if (authStatusDiv) {
+                    authStatusDiv.innerHTML = '❌ Gmail API 설정이 필요합니다. 관리자에게 문의하세요.';
+                    authStatusDiv.className = 'status-info error';
+                }
+                if (gmailAuthBtn) {
+                    gmailAuthBtn.disabled = true;
+                }
+            }
+
+        } catch (error) {
+            console.error('Failed to check auth status:', error);
         }
     }
 

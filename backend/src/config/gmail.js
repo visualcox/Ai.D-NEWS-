@@ -15,32 +15,63 @@ class GmailService {
    */
   async initialize() {
     try {
-      // For development/demo purposes, we'll use a mock implementation
-      // In production, you would need to set up proper OAuth2 credentials
-      
       if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET) {
         this.oauth2Client = new google.auth.OAuth2(
           process.env.GMAIL_CLIENT_ID,
           process.env.GMAIL_CLIENT_SECRET,
-          process.env.GMAIL_REDIRECT_URI || 'http://localhost:3001/auth/gmail/callback'
+          process.env.GMAIL_REDIRECT_URI || 'urn:ietf:wg:oauth:2.0:oob'
         )
 
         if (process.env.GMAIL_REFRESH_TOKEN) {
           this.oauth2Client.setCredentials({
-            refresh_token: process.env.GMAIL_REFRESH_TOKEN
+            refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+            access_token: process.env.GMAIL_ACCESS_TOKEN
           })
 
-          this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client })
-          this.initialized = true
-          logger.info('Gmail API initialized successfully')
+          // Test the connection
+          try {
+            this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client })
+            
+            // Test API call to verify authentication
+            await this.gmail.users.getProfile({ userId: 'me' })
+            
+            this.initialized = true
+            logger.info('✅ Gmail API initialized successfully with real authentication')
+            return true
+            
+          } catch (authError) {
+            logger.warn('Gmail API authentication failed, refreshing tokens...', authError.message)
+            
+            try {
+              // Try to refresh the access token
+              const { credentials } = await this.oauth2Client.refreshAccessToken()
+              this.oauth2Client.setCredentials(credentials)
+              
+              // Test again
+              await this.gmail.users.getProfile({ userId: 'me' })
+              
+              this.initialized = true
+              logger.info('✅ Gmail API initialized successfully after token refresh')
+              return true
+              
+            } catch (refreshError) {
+              logger.error('Failed to refresh Gmail tokens:', refreshError.message)
+              logger.warn('Falling back to mock data. Please re-authenticate Gmail.')
+              return false
+            }
+          }
+          
         } else {
-          logger.warn('Gmail refresh token not found. Email collection will use mock data.')
+          logger.info('Gmail refresh token not found. Please authenticate to enable real email collection.')
+          logger.info(`Visit: /api/auth/gmail to start authentication`)
+          return false
         }
       } else {
-        logger.warn('Gmail API credentials not configured. Using mock implementation.')
+        logger.warn('Gmail API credentials not configured. Please set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET environment variables.')
+        logger.info('Using mock implementation for development.')
+        return false
       }
 
-      return this.initialized
     } catch (error) {
       logger.error('Failed to initialize Gmail API:', error)
       return false
@@ -71,14 +102,45 @@ class GmailService {
    */
   async getTokens(code) {
     if (!this.oauth2Client) {
-      throw new Error('OAuth2 client not initialized')
+      this.oauth2Client = new google.auth.OAuth2(
+        process.env.GMAIL_CLIENT_ID,
+        process.env.GMAIL_CLIENT_SECRET,
+        process.env.GMAIL_REDIRECT_URI || 'urn:ietf:wg:oauth:2.0:oob'
+      )
     }
 
-    const { tokens } = await this.oauth2Client.getToken(code)
-    this.oauth2Client.setCredentials(tokens)
-    
-    logger.info('Gmail tokens obtained successfully')
-    return tokens
+    try {
+      const { tokens } = await this.oauth2Client.getToken(code)
+      this.oauth2Client.setCredentials(tokens)
+      
+      // Test the authentication
+      this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client })
+      const profile = await this.gmail.users.getProfile({ userId: 'me' })
+      
+      logger.info(`✅ Gmail authentication successful for: ${profile.data.emailAddress}`)
+      logger.info('🔑 Tokens obtained:', {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'N/A',
+        scope: tokens.scope
+      })
+      
+      // Save tokens to environment (in production, save to secure storage)
+      if (tokens.refresh_token) {
+        logger.info('💾 Save this refresh token to your environment variables:')
+        logger.info(`GMAIL_REFRESH_TOKEN="${tokens.refresh_token}"`)
+      }
+      if (tokens.access_token) {
+        logger.info(`GMAIL_ACCESS_TOKEN="${tokens.access_token}"`)
+      }
+      
+      this.initialized = true
+      return tokens
+      
+    } catch (error) {
+      logger.error('Failed to exchange authorization code:', error)
+      throw new Error(`Gmail authentication failed: ${error.message}`)
+    }
   }
 
   /**
@@ -86,12 +148,13 @@ class GmailService {
    */
   async searchTLDREmails(maxResults = 50) {
     try {
-      if (!this.initialized) {
+      if (!this.initialized || !this.gmail) {
         logger.warn('Gmail API not initialized, returning mock data')
         return this.getMockTLDREmails()
       }
 
       const query = 'from:dan@tldrnewsletter.com'
+      logger.info(`🔍 Searching Gmail for: ${query} (max: ${maxResults} results)`)
       
       const response = await this.gmail.users.messages.list({
         userId: 'me',
@@ -100,23 +163,35 @@ class GmailService {
       })
 
       const messages = response.data.messages || []
-      logger.info(`Found ${messages.length} TLDR emails`)
+      logger.info(`📧 Found ${messages.length} TLDR emails in Gmail`)
+
+      if (messages.length === 0) {
+        logger.warn('No TLDR emails found in Gmail. Falling back to mock data for demonstration.')
+        return this.getMockTLDREmails()
+      }
 
       const emails = []
+      let processedCount = 0
+      
       for (const message of messages) {
         try {
+          logger.info(`📥 Processing email ${processedCount + 1}/${messages.length}: ${message.id}`)
           const emailData = await this.getEmailContent(message.id)
           if (emailData) {
             emails.push(emailData)
+            processedCount++
           }
         } catch (error) {
           logger.error(`Failed to fetch email ${message.id}:`, error)
         }
       }
 
+      logger.info(`✅ Successfully processed ${processedCount} TLDR emails from Gmail`)
       return emails
+      
     } catch (error) {
-      logger.error('Failed to search TLDR emails:', error)
+      logger.error('Failed to search TLDR emails from Gmail API:', error)
+      logger.warn('Falling back to mock data')
       return this.getMockTLDREmails()
     }
   }

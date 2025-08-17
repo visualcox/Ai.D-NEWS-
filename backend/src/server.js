@@ -12,6 +12,7 @@ import subscriptionsRouter from './routes/subscriptions.js'
 import podcastsRouter from './routes/podcasts.js'
 import emailRouter from './routes/email.js'
 import emailCollectionRouter from './routes/emailCollection.js'
+import authRouter from './routes/auth.js'
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
@@ -76,7 +77,8 @@ app.get('/', (req, res) => {
       subscriptions: '/api/subscriptions',
       podcasts: '/api/podcasts',
       email: '/api/email',
-      emailCollection: '/api/email-collection'
+      emailCollection: '/api/email-collection',
+      auth: '/api/auth'
     },
     documentation: '/api/docs'
   })
@@ -153,6 +155,25 @@ app.get('/api/docs', (req, res) => {
         method: 'POST',
         description: 'Initialize email collector service',
         response: { success: 'boolean', data: { initialized: 'boolean' } }
+      },
+      {
+        path: '/api/auth/gmail',
+        method: 'GET',
+        description: 'Get Gmail OAuth2 authorization URL or authentication page',
+        response: { success: 'boolean', data: { authUrl: 'string' } }
+      },
+      {
+        path: '/api/auth/gmail/callback',
+        method: 'POST', 
+        description: 'Handle Gmail OAuth2 callback with authorization code',
+        body: { code: 'string (required)' },
+        response: { success: 'boolean', data: { authenticated: 'boolean' } }
+      },
+      {
+        path: '/api/auth/gmail/status',
+        method: 'GET',
+        description: 'Check Gmail authentication status',
+        response: { success: 'boolean', data: { isAuthenticated: 'boolean' } }
       }
     ],
     categories: ['tech', 'ai', 'marketing', 'design'],
@@ -183,6 +204,7 @@ app.use('/api/subscriptions', subscriptionsRouter)
 app.use('/api/podcasts', podcastsRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/email-collection', emailCollectionRouter)
+app.use('/api/auth', authRouter)
 
 // 404 handler
 app.use('*', (req, res) => {
